@@ -1,0 +1,14 @@
+# IDE stuff
+/.vscode
+/.vs
+/.idea
+
+# clangd
+/compile_commands.json
+
+# Common CMake folders 
+/build/
+/run/
+/install/
+/external/
+/Testing/
