@@ -6,6 +6,7 @@
 
 #ifdef __cplusplus
 extern "C" {
+#define restrict
 #endif
 
 /* A growable array of same-sized elements/items.
@@ -159,7 +160,8 @@ Grows the vector if necessary.
 */
 void vector_insert(struct vector* vec, int index, void const* restrict value);
 
-/* Inserts all elements from the provided array in the vector, starting from the given index
+/* Inserts all elements from the provided array in the vector, starting from the given
+index.
 
 Equivalent to:
 ```
@@ -168,7 +170,12 @@ for (int i = 0; i < n_values; ++i) {
 }
 ```
 */
-void vector_insert_array(struct vector* vec, int index, int n_values, void const* restrict values);
+void vector_insert_array(
+    struct vector* vec,
+    int index,
+    int n_values,
+    void const* restrict values
+);
 
 /* Inserts an element at the end of the vector.
 
@@ -245,9 +252,16 @@ Notes:
 */
 void vector_push_sprintf(struct vector* vec, char const* restrict format, ...)
     __attribute__((format(printf, 2, 3)));
-void vector_push_vsprintf(struct vector* vec, char const* restrict format, va_list args);
-void vector_push_sprintf_terminated(struct vector* vec, char const* restrict format, ...)
-    __attribute__((format(printf, 2, 3)));
+void vector_push_vsprintf(
+    struct vector* vec,
+    char const* restrict format,
+    va_list args
+);
+void vector_push_sprintf_terminated(
+    struct vector* vec,
+    char const* restrict format,
+    ...
+) __attribute__((format(printf, 2, 3)));
 
 /* Ensures the vector can fit at least `at_least` elements.
 
@@ -395,6 +409,7 @@ GENERATE_VECTOR_GETTERS(int*, intptr)
 GENERATE_VECTOR_REF_GETTER(struct vector, vector);
 
 #ifdef __cplusplus
+#undef restrict
 }
 #endif
 

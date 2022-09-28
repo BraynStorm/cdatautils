@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "cvector.h"
+#include <cvector.h>
 
 #include <string>
 
