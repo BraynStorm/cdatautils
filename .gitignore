@@ -4,6 +4,7 @@
 /.idea
 
 # clangd
+/.cache
 /compile_commands.json
 
 # Common CMake folders 

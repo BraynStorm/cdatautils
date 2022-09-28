@@ -4,6 +4,7 @@
 
 #include <string>
 
+#define ARRAY_COUNT(array) (sizeof(array) / sizeof((array)[0]))
 
 /* Necessary wrapper so that Catch2 correctly calls vector_destroy() on each created
 `vector`.
@@ -27,6 +28,7 @@ TEST_CASE("vector's data is always aligned on a 16 byte boundary", "[vector]")
         }
     }
 }
+
 TEST_CASE("a new vector has zero size, capacity and no data")
 {
     vector_wrapper v = vector_create(int);
@@ -215,6 +217,111 @@ TEST_CASE("vector basics", "[vector]")
     }
 }
 
+TEST_CASE("vector insertions")
+{
+    vector_wrapper v = vector_create(int);
+    GIVEN("an empty vector")
+    {
+        WHEN("an array is inserted ata index 0")
+        {
+            int const items[] = { 6, 5, 4, 3, 2, 1 };
+            int const n_items = ARRAY_COUNT(items);
+            vector_insert_array(&v, 0, n_items, items);
+
+            THEN("the size of the vector matches the size of the array")
+            {
+                REQUIRE(v.size == n_items);
+            }
+            THEN("the items of the vector match exactly the array's contents")
+            {
+                bool equal = 0 == memcmp(items, v.data, v.size * v.value_size);
+                REQUIRE(equal == true);
+            }
+        }
+    }
+
+    GIVEN("a vector of 8 elements")
+    {
+        vector_reserve(&v, 8);
+        int initial_items[] = { 100, 10, 20, 30, 40, 50, 60, 70 };
+        for (int i = 0; i < v.capacity; ++i)
+            vector_push(&v, &initial_items[i]);
+
+        int const old_size = v.size;
+
+        int const items[] = { 7, 6, 5, 4, 3, 2, 1, 55 };
+        int const n_items = ARRAY_COUNT(items);
+
+        WHEN("an array is inserted data index 0 (start)")
+        {
+            vector_insert_array(&v, 0, n_items, items);
+            THEN("the size of the vector increases")
+            {
+                REQUIRE(v.size == n_items + old_size);
+            }
+            THEN("the start of the array matches the inserted items")
+            {
+                for (int i = 0; i < n_items; ++i) {
+                    REQUIRE(vector_get_i32(&v, i) == items[i]);
+                }
+            }
+            AND_THEN("the rest of the array contains the original items")
+            {
+                for (int i = 0; i < old_size; ++i) {
+                    REQUIRE(vector_get_i32(&v, n_items + i) == initial_items[i]);
+                }
+            }
+        }
+        WHEN("an array is inserted data index 3 (middle)")
+        {
+            vector_insert_array(&v, 3, n_items, items);
+            THEN("the size of the vector increases")
+            {
+                REQUIRE(v.size == n_items + old_size);
+            }
+            THEN("the items in index range [0, 3) are the original items")
+            {
+                REQUIRE(vector_get_i32(&v, 0) == initial_items[0]);
+                REQUIRE(vector_get_i32(&v, 1) == initial_items[1]);
+                REQUIRE(vector_get_i32(&v, 2) == initial_items[2]);
+            }
+            AND_THEN("the items in index range [3, 11) are the inserted items")
+            {
+                for (int i = 0; i < n_items; ++i) {
+                    REQUIRE(vector_get_i32(&v, i + 3) == items[i]);
+                }
+            }
+            AND_THEN("the items in index range [11, 16) are the original items")
+            {
+                for (int i = 0; i < 5; ++i) {
+                    REQUIRE(vector_get_i32(&v, i + 11) == initial_items[i + 3]);
+                }
+            }
+        }
+        WHEN("an array is inserted data index 7 (end)")
+        {
+            vector_insert_array(&v, 8, n_items, items);
+            THEN("the size of the vector increases")
+            {
+                REQUIRE(v.size == n_items + old_size);
+            }
+            THEN("the start of the array matches the original items")
+            {
+                for (int i = 0; i < old_size; ++i) {
+                    REQUIRE(vector_get_i32(&v, i) == initial_items[i]);
+                }
+            }
+            AND_THEN("the rest of the array contains the inserted items")
+            {
+                for (int i = 0; i < n_items; ++i) {
+                    REQUIRE(vector_get_i32(&v, i + old_size) == items[i]);
+                }
+            }
+        }
+    }
+}
+
+
 TEST_CASE("a vector with spare capacity doesn't allocate")
 {
     vector_wrapper v = {};
@@ -301,7 +408,7 @@ TEST_CASE("vector_push_sprintf")
                 REQUIRE(vector_to_string(v) == "random text");
             }
         }
-        WHEN("format string containing %% is pushed")
+        WHEN("fmt=%%")
         {
             vector_push_sprintf(&v, "abc%%");
 
@@ -322,14 +429,33 @@ TEST_CASE("vector_push_sprintf")
         }
         WHEN("fmt=%i")
         {
-            vector_push_sprintf(&v, "a%ib", 14);
-            REQUIRE(vector_to_string(v) == "a14b");
+            AND_WHEN("negative")
+            {
+                vector_push_sprintf(&v, "a%ib", 14);
+                REQUIRE(vector_to_string(v) == "a14b");
+            }
+
+            AND_WHEN("negative")
+            {
+                vector_push_sprintf(&v, "a%ib", -14);
+                REQUIRE(vector_to_string(v) == "a-14b");
+            }
+        }
+        WHEN("fmt=%u")
+        {
+            vector_push_sprintf(&v, "a%ub", (uint32_t)3000000000);
+            REQUIRE(vector_to_string(v) == "a3000000000b");
         }
         WHEN("fmt=%li")
         {
-            int64_t three_bil = 3000000000;
-            vector_push_sprintf(&v, "a%lib", three_bil);
+            vector_push_sprintf(&v, "a%lib", (int64_t)3000000000);
             REQUIRE(vector_to_string(v) == "a3000000000b");
+        }
+        WHEN("fmt=%lu")
+        {
+            // Slight less than UINT64_MAX
+            vector_push_sprintf(&v, "a%lib", (uint64_t)9223372036854775800LLU);
+            REQUIRE(vector_to_string(v) == "a9223372036854775800b");
         }
     }
 #undef vector_to_string

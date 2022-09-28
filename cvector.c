@@ -8,7 +8,7 @@
 
 #define internal static
 
-#ifdef VECTOR_USE_ASSERT_H
+#ifdef VECTOR_USE_ASSERT
 #include <assert.h>
 #else
 #define assert(...)
@@ -122,7 +122,7 @@ vector_clear_and_free(struct vector* vec)
     vector_clear(vec);
 }
 void
-vector_insert(struct vector* vec, int index, void const* value)
+vector_insert(struct vector* vec, int index, void const* restrict value)
 {
     int const size = vec->size;
     int const value_size = vec->value_size;
@@ -134,7 +134,7 @@ vector_insert(struct vector* vec, int index, void const* value)
         vector_grow(vec, 1, false);
 
     int move_amount = size - index;
-    if (move_amount) {
+    if (move_amount > 0) {
         memmove(
             vector_get(vec, index + 1),
             vector_get(vec, index),
@@ -146,32 +146,57 @@ vector_insert(struct vector* vec, int index, void const* value)
     vec->size = size + 1;
 }
 void
-vector_push(struct vector* vec, void const* value)
+vector_insert_array(
+    struct vector* vec,
+    int index,
+    int const n_values,
+    void const* restrict values
+)
+{
+    int const size = vec->size;
+    int const value_size = vec->value_size;
+
+    assert(index <= size);
+
+    // `vector_reserve_more(n_values)` but 'faster' (less going to memory).
+    vector_reserve(vec, size + n_values);
+
+    int move_amount = size - index;
+
+    // Move the items already in the vector. {#000}
+    /* NOTE(braynstorm):
+        Using greater-than should also cover the case where `index > size`.
+    */
+    if (move_amount > 0)
+        memmove(
+            vector_get(vec, index + n_values),
+            vector_get(vec, index),
+            move_amount * value_size
+        );
+
+    // Copy the whole vector in the newly cleared up space.
+    memcpy(vector_get(vec, index), values, n_values * value_size);
+
+    // Finish the insertion by increasing the size.
+    vec->size = size + n_values;
+}
+void
+vector_push(struct vector* vec, void const* restrict value)
 {
     vector_insert(vec, vec->size, value);
 }
 void
-vector_push_array(struct vector* vec, int n_values, void const* values)
+vector_push_array(struct vector* vec, int n_values, void const* restrict values)
 {
-    int const value_size = vec->value_size;
-    int const vec_size = vec->size;
-
-    assert(value_size > 0);
-    assert(n_values >= 0);
-    assert(values != NULL);
-
-    vector_reserve_more(vec, n_values);
-
-    memcpy((char*)vec->data + vec_size * value_size, values, n_values * value_size);
-    vec->size = vec_size + n_values;
+    vector_insert_array(vec, vec->size, n_values, values);
 }
 void
-vector_push_string(struct vector* vec, char const* str)
+vector_push_string(struct vector* vec, char const* restrict str)
 {
     vector_push_array(vec, strlen(str), str);
 }
 void
-vector_push_sprintf(struct vector* vec, char const* format, ...)
+vector_push_sprintf(struct vector* vec, char const* restrict format, ...)
 {
     va_list args;
     va_start(args, format);
@@ -179,7 +204,7 @@ vector_push_sprintf(struct vector* vec, char const* format, ...)
     va_end(args);
 }
 void
-vector_push_vsprintf(struct vector* vec, char const* format, va_list args)
+vector_push_vsprintf(struct vector* vec, char const* restrict format, va_list args)
 {
     assert(vec->value_size == sizeof(char));
 
@@ -190,83 +215,90 @@ vector_push_vsprintf(struct vector* vec, char const* format, va_list args)
 
     for (; format[i]; ++i) {
         char c = format[i];
+        if (c != '%')
+            continue;
+
+        // Push the 'skipped' part of `format`.
+        vector_push_array(vec, i - last_replacement, format + last_replacement);
+
+        // Get the next char.
+        c = format[++i];
+
+        int size = vec->size;
 
         switch (c) {
-            case '%': {
-                // Push the 'skipped' part of `format`.
-                vector_push_array(vec, i - last_replacement, format + last_replacement);
-
-                // Get the next char.
+            case '%': vector_push(vec, &c); break;
+            case 's': vector_push_string(vec, va_arg(args, char const*)); break;
+            case 'l':
                 c = format[++i];
-
                 switch (c) {
-                    case '%': vector_push(vec, &c); break;
-                    case 's': vector_push_string(vec, va_arg(args, char const*)); break;
-                    case 'l':
-                        c = format[++i];
-                        switch (c) {
-                            case 'i':
-                                // -9223372036854775807 == 20
-                                vector_reserve_more(vec, 20);
-                                written = sprintf(
-                                    vector_ref_char(vec, vec->size),
-                                    "%lli",
-                                    va_arg(args, int64_t)
-                                );
-                                vec->size += written;
-                                break;
-                            case 'u':
-                                // 9223372036854775807 == 19
-                                vector_reserve_more(vec, 19);
-                                written = sprintf(
-                                    vector_ref_char(vec, vec->size),
-                                    "%llu",
-                                    va_arg(args, uint64_t)
-                                );
-                                vec->size += written;
-                                break;
-                            case 'f':
-                                vector_reserve_more(vec, 20);
-                                written = sprintf(
-                                    vector_ref_char(vec, vec->size),
-                                    "%f",
-                                    va_arg(args, double)
-                                );
-                                vec->size += written;
-                                break;
-                        }
-                        break;
                     case 'i':
-                        // signed 32 bit -> negative 2 billion == 11 chars.
-                        vector_reserve_more(vec, 11);
+                        // -9223372036854775807 == 20
+                        vector_reserve_more(vec, 20);
                         written = sprintf(
-                            vector_ref_char(vec, vec->size),
-                            "%i",
-                            va_arg(args, int32_t)
+                            vector_ref_char(vec, size),
+                            "%lli",
+                            va_arg(args, int64_t)
                         );
-                        vec->size += written;
+                        vec->size = size + written;
                         break;
                     case 'u':
-                        // unsigned 32 bit -> negative 2 billion == 10 chars.
-                        vector_reserve_more(vec, 10);
+                        // 9223372036854775807 == 19
+                        vector_reserve_more(vec, 19);
                         written = sprintf(
                             vector_ref_char(vec, vec->size),
-                            "%u",
-                            va_arg(args, uint32_t)
+                            "%llu",
+                            va_arg(args, uint64_t)
                         );
-                        vec->size += written;
+                        vec->size = size + written;
+                        break;
+                    case 'f':
+                        vector_reserve_more(vec, 20);
+                        written = sprintf(
+                            vector_ref_char(vec, vec->size),
+                            "%f",
+                            va_arg(args, double)
+                        );
+                        vec->size = size + written;
                         break;
                 }
-                last_replacement = i + 1;
-            } break;
+                break;
+            case 'i':
+                // signed 32 bit -> negative 2 billion == 11 chars.
+                vector_reserve_more(vec, 11);
+                written = sprintf(
+                    vector_ref_char(vec, vec->size),
+                    "%i",
+                    va_arg(args, int32_t)
+                );
+                vec->size += written;
+                break;
+            case 'u':
+                // unsigned 32 bit -> 4 billion == 10 chars.
+                vector_reserve_more(vec, 10);
+                written = sprintf(
+                    vector_ref_char(vec, vec->size),
+                    "%u",
+                    va_arg(args, uint32_t)
+                );
+                vec->size += written;
+                break;
         }
+        last_replacement = i + 1;
     }
 
+    // Push the last part of the string.
+    // Also handles cases where the sprintf() is called without any %replacements.
     vector_push_string(vec, format + last_replacement);
 }
 void
-vector_push_sprintf_terminated(struct vector* vec, char const* format, ...)
+vector_push_sprintf_terminated(struct vector* vec, char const* restrict format, ...)
 {
+    /* NOTE(bozho2):
+        `vector_push_sprintf_terminated` could be chained.
+        Figure out if it is by checking the last character of the vector before
+        inserting anything.
+    */
     if (vec->size > 0 && ((char*)vec->data)[vec->size - 1] != 0) {
         // We need to overwrite the last \0.
         --vec->size;

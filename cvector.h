@@ -157,7 +157,18 @@ void vector_clear_and_free(struct vector* vec);
 
 Grows the vector if necessary.
 */
-void vector_insert(struct vector* vec, int index, void const* value);
+void vector_insert(struct vector* vec, int index, void const* restrict value);
+
+/* Inserts all elements from the provided array in the vector, starting from the given index
+
+Equivalent to:
+```
+for (int i = 0; i < n_values; ++i) {
+    vector_insert(vec, index + i, &values[i]);
+}
+```
+*/
+void vector_insert_array(struct vector* vec, int index, int n_values, void const* restrict values);
 
 /* Inserts an element at the end of the vector.
 
@@ -168,7 +179,7 @@ Equivalent to:
     vector_insert(vec, vec->size, value);
 ```
 */
-void vector_push(struct vector* vec, void const* value);
+void vector_push(struct vector* vec, void const* restrict value);
 
 /* Inserts `n_values` elements in to the vector, reading each one consecutively
 from `values`.
@@ -191,7 +202,7 @@ Equivalent to:
         vector_push(vec, values[i]);
 ```
 */
-void vector_push_array(struct vector* vec, int n_values, void const* values);
+void vector_push_array(struct vector* vec, int n_values, void const* restrict values);
 
 /* Pushes the characters of a null-terminated string `string` in the vector.
 
@@ -203,7 +214,7 @@ Equivalent to:
 vector_push_array(vec, strlen(string), string);
 ```
 */
-void vector_push_string(struct vector* vec, char const* string);
+void vector_push_string(struct vector* vec, char const* restrict string);
 
 /* Pushes formatted data to the internal buffer.
 
@@ -232,10 +243,10 @@ Notes:
     - Does not null-terminate the buffer (no \0).
         For that, use `vector_push_sprintf_terminated`.
 */
-void vector_push_sprintf(struct vector* vec, char const* format, ...)
+void vector_push_sprintf(struct vector* vec, char const* restrict format, ...)
     __attribute__((format(printf, 2, 3)));
-void vector_push_vsprintf(struct vector* vec, char const* format, va_list args);
-void vector_push_sprintf_terminated(struct vector* vec, char const* format, ...)
+void vector_push_vsprintf(struct vector* vec, char const* restrict format, va_list args);
+void vector_push_sprintf_terminated(struct vector* vec, char const* restrict format, ...)
     __attribute__((format(printf, 2, 3)));
 
 /* Ensures the vector can fit at least `at_least` elements.

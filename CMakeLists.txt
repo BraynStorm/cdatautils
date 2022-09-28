@@ -4,6 +4,7 @@ project(cvector C CXX)
 
 option(CVECTOR_FORCE_STATIC "Force <cvector> to be built as a static library")
 option(CVECTOR_TESTS "Build cvector-test" ON)
+option(CVECTOR_ASSERTS "Build cvector with asserts (debug only)" ON)
 option(CVECTOR_DOWNLOAD_DEPS "Allow <cvector> to be download additional dependencies" ON)
 
 set(CVECTOR_SOURCES cvector.c)
@@ -24,8 +25,13 @@ set_target_properties(
     C_EXTENSIONS OFF
 )
 
+if(CVECTOR_ASSERTS)
+    target_compile_definitions(cvector PRIVATE VECTOR_USE_ASSERT)
+endif()
+
 if(CVECTOR_TESTS)
     find_package(Catch2 QUIET)
+
     if(NOT Catch2_FOUND AND CVECTOR_DOWNLOAD_DEPS)
         include(FetchContent)
         FetchContent_Declare(
@@ -37,7 +43,7 @@ if(CVECTOR_TESTS)
             OVERRIDE_FIND_PACKAGE
         )
         find_package(Catch2)
-    elseif (NOT CVECTOR_DOWNLOAD_DEPS)
+    elseif(NOT CVECTOR_DOWNLOAD_DEPS)
         find_package(Catch2)
     endif()
 
