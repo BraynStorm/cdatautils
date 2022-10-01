@@ -417,6 +417,26 @@ TEST_CASE("vector_push_sprintf")
                 REQUIRE(vector_to_string(v) == "abc%");
             }
         }
+        WHEN("fmt=%c")
+        {
+            vector_push_sprintf(&v, "ab%cc", 'A');
+            REQUIRE(vector_to_string(v) == "abAc");
+        }
+        WHEN("fmt=%*c, with 0")
+        {
+            vector_push_sprintf(&v, "ab%*cc", 0, 'A');
+            REQUIRE(vector_to_string(v) == "abc");
+        }
+        WHEN("fmt=%*c, with 1")
+        {
+            vector_push_sprintf(&v, "ab%*cc", 1, 'A');
+            REQUIRE(vector_to_string(v) == "abAc");
+        }
+        WHEN("fmt=%*c, with 10")
+        {
+            vector_push_sprintf(&v, "ab%*cc", 10, 'A');
+            REQUIRE(vector_to_string(v) == "abAAAAAAAAAAc");
+        }
         WHEN("fmt=%s")
         {
             char const* some_string = "asdf";
