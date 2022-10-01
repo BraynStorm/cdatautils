@@ -315,7 +315,7 @@ vector_push_sprintf_terminated(struct vector* vec, char const* restrict format, 
         Figure out if it is by checking the last character of the vector before
         inserting anything.
     */
-    if (vec->size > 0 && ((char*)vec->data)[vec->size - 1] != 0) {
+    if (vec->size > 0 && ((char*)vec->data)[vec->size - 1] == 0) {
         // We need to overwrite the last \0.
         --vec->size;
     }
