@@ -223,6 +223,17 @@ vector_push_array(vec, strlen(string), string);
 */
 void vector_push_string(struct vector* vec, char const* restrict string);
 
+#if defined(__clang__) || defined(__GNUC__)
+#define CVECTOR_PRINTF_ATTRIBUTE __attribute__((format(printf, 2, 3)))
+#define CVECTOR_PRINTF_FSTRING
+#elif defined(MSVC)
+#define CVECTOR_PRINTF_ATTRIBUTE
+#define CVECTOR_PRINTF_FSTRING _Printf_format_string_
+#else
+#define CVECTOR_PRINTF_ATTRIBUTE
+#define CVECTOR_PRINTF_FSTRING
+#endif
+
 /* Pushes formatted data to the internal buffer.
 
 Similar in spirit to sprintf() but has slightly different semantics.
@@ -249,8 +260,11 @@ Notes:
     - Does not null-terminate the buffer (no \0).
         For that, use `vector_push_sprintf_terminated`.
 */
-void vector_push_sprintf(struct vector* vec, char const* restrict format, ...)
-    __attribute__((format(printf, 2, 3)));
+void vector_push_sprintf(
+    struct vector* vec,
+    CVECTOR_PRINTF_FSTRING char const* restrict format,
+    ...
+) CVECTOR_PRINTF_ATTRIBUTE;
 void vector_push_vsprintf(
     struct vector* vec,
     char const* restrict format,
@@ -258,9 +272,9 @@ void vector_push_vsprintf(
 );
 void vector_push_sprintf_terminated(
     struct vector* vec,
-    char const* restrict format,
+    CVECTOR_PRINTF_FSTRING char const* restrict format,
     ...
-) __attribute__((format(printf, 2, 3)));
+) CVECTOR_PRINTF_ATTRIBUTE;
 
 /* Ensures the vector can fit at least `at_least` items.
 
