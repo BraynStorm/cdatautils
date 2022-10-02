@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+	<Type Name="vector">
+		<DisplayString>{{size={size}, capacity={capacity}}}</DisplayString>
+		<Expand>
+			<Item Name="size (items)">size</Item>
+			<Item Name="capacity (items)">capacity</Item>
+			<Item Name="item size">value_size</Item>
+			<Item Name="[free space] (items)" ExcludeView="simple">capacity - size</Item>
+			<Item Name="[total used bytes]" ExcludeView="simple">value_size * size</Item>
+			<Item Name="[total allocated bytes]" ExcludeView="simple">value_size * capacity</Item>
+
+			<Item Name="items(bytes)">(unsigned char*)data, [size * value_size]</Item>
+			<Item Name="items(char)"   Condition="value_size == 1">(char*)data, [size]</Item>
+			<Item Name="items(int16)"  Condition="value_size == 2">(short*)data, [size]</Item>
+			<Item Name="items(int32)"  Condition="value_size == 4">(int*)data, [size]</Item>
+			<Item Name="items(int64)"  Condition="value_size == 8">(long long*)data, [size]</Item>
+			<Item Name="items(uint16)" Condition="value_size == 2">(unsigned short*)data, [size]</Item>
+			<Item Name="items(uint32)" Condition="value_size == 4">(unsigned int*)data, [size]</Item>
+			<Item Name="items(uint64)" Condition="value_size == 8">(unsigned long long*)data, [size]</Item>
+			<Item Name="items(float)"  Condition="value_size == 4">(float*)data, [size]</Item>
+			<Item Name="items(double)" Condition="value_size == 8">(double*)data, [size]</Item>
+		</Expand>
+	</Type>
+</AutoVisualizer>

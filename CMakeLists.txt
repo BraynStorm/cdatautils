@@ -16,6 +16,10 @@ else()
     add_library(cvector STATIC ${CVECTOR_SOURCES})
 endif()
 
+if(MSVC)
+    target_link_options(cvector PRIVATE "/NATVIS:cvector.natvis")
+endif()
+
 target_include_directories(cvector PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 set_target_properties(
