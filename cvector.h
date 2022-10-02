@@ -9,13 +9,13 @@ extern "C" {
 #define restrict
 #endif
 
-/* A growable array of same-sized elements/items.
+/* A growable array of same-sized items.
 
 It is expected that `value_size` does not change and is not changed by the user.
 */
 struct vector
 {
-    /* Pointer to buffer that holds the ELEMENTS.
+    /* Pointer to buffer that holds the ITEMS.
 
     This value is NULL when capacity is 0.
     This value is NOT NULL when capacity is not 0.
@@ -28,12 +28,12 @@ struct vector
     Modifying manually:
         Not advised.
 
-        If needed, be sure to limit `capacity` and `size` to no more than the size
-    of the allocated block divided by `value_size`.
+        If needed, be sure to limit `capacity` and `size` to no more than the
+        size of the allocated block divided by `value_size`.
     */
     void* data;
 
-    /* The number of ELEMENTS in the vector currently.
+    /* The number of ITEMS in the vector currently.
 
     This is not an `unsigned` value, because it would make life more complicated.
 
@@ -44,18 +44,18 @@ struct vector
 
         Decreasing this value:
             - below 0 is illegal.
-            - by 1 (previous rule still applies) is equivalent to removing the
-    last element of the vector.
+            - by 1 (previous rule still applies) is equivalent to removing
+            the last element of the vector.
 
         Increasing this value:
             - up to `capacity` is permitted, but may result in old or
-    uninitialized data being able to be read.
-            - beyond `capacity` is illegal, and will produce crashes that are hard
-    to debug.
+            uninitialized data being able to be read.
+            - beyond `capacity` is illegal, and will produce crashes that are
+            hard to debug.
     */
     int size;
 
-    /* The number of ELEMENTS the vector can hold, before having to grow.
+    /* The number of ITEMS the vector can hold, before having to grow.
 
     This is not an `unsigned` value, because it would make life more complicated.
 
@@ -66,7 +66,7 @@ struct vector
     */
     int capacity;
 
-    /* The size of an ELEMENT in bytes.
+    /* The size of an ITEM in bytes.
 
     This is not an `unsigned` value, because it would make life more complicated.
 
@@ -75,11 +75,11 @@ struct vector
     Modifying manually:
         Don't. Really.
 
-        `vector` uses this to determine the boundaries of the elements in the data
+        `vector` uses this to determine the boundaries of the items in the data
         block, decreasing this is legal, but highly dangerous.
         Use a lot of tests (caution).
         Increasing this is VERY dangerous and could easily send you into UB town
-    (the real one).
+        (the real one).
     */
     int value_size;
 };
@@ -122,7 +122,7 @@ vec->data = 0;
 */
 void vector_destroy(struct vector* vec);
 
-/* Destroys all elements in the vector.
+/* Destroys all items in the vector.
 
 Notes:
     - The memory is not freed.
@@ -160,7 +160,7 @@ Grows the vector if necessary.
 */
 void vector_insert(struct vector* vec, int index, void const* restrict value);
 
-/* Inserts all elements from the provided array in the vector, starting from the given
+/* Inserts all items from the provided array in the vector, starting from the given
 index.
 
 Equivalent to:
@@ -188,7 +188,7 @@ Equivalent to:
 */
 void vector_push(struct vector* vec, void const* restrict value);
 
-/* Inserts `n_values` elements in to the vector, reading each one consecutively
+/* Inserts `n_values` items in to the vector, reading each one consecutively
 from `values`.
 
 Grows the vector if necessary with one call to `vector_grow`.
@@ -196,7 +196,7 @@ Performs a bitwise copy of the values, inserting .
 
 Note:
     - The user is responsible for ensuring `values` points to an "array" of
-`n_values` elements and that the type of these elements is the same as the type
+`n_values` items and that the type of these items is the same as the type
 of the vector.
 
 Equivalent to:
@@ -206,7 +206,7 @@ Equivalent to:
 
     vector_reserve_more(vec, n_values);
     for (int i = 0; i < n_values; ++i)
-        vector_push(vec, values[i]);
+        vector_push(vec, &values[i]);
 ```
 */
 void vector_push_array(struct vector* vec, int n_values, void const* restrict values);
@@ -239,8 +239,7 @@ Supports:
     - `%s`  -> char const*
     - `%c`  -> char
     - `%*c` -> char, repeated N times. Expects uint32_t N, followed by a char.
-    - `%f`  -> float
-    - `%lf` -> double
+    - `%f`  -> double
     - `%u`  -> uint32_t
     - `%lu` -> uint64_t
     - `%i`  -> int32_t
@@ -263,13 +262,13 @@ void vector_push_sprintf_terminated(
     ...
 ) __attribute__((format(printf, 2, 3)));
 
-/* Ensures the vector can fit at least `at_least` elements.
+/* Ensures the vector can fit at least `at_least` items.
 
 If the can already fit them, this is a noop.
 */
 void vector_reserve(struct vector* vec, int at_least);
 
-/* Ensures the vector can fit `more` more elements.
+/* Ensures the vector can fit `more` more items.
 
 If the can already fit them, this is a noop.
 */
@@ -317,7 +316,7 @@ Example:
 
 /* Returns a typed value from a `struct vector`.
 
-Useful if you need a one-off getter for a given type, and dont want to pollute
+Useful if you need a one-off getter for a given type, and don't want to pollute
 the namespace.
 
 Parameters:
