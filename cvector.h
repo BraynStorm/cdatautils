@@ -146,10 +146,10 @@ for this behaviour. Notably:
 
 Equivalent to:
 ```
-    for (int i = 0; i < vec->size; ++i) {
-        free(vector_get_voidptr(vec, i));
-    }
-    vector_clear(vec);
+for (int i = 0; i < vec->size; ++i) {
+    free(vector_get_voidptr(vec, i));
+}
+vector_clear(vec);
 ```
 */
 void vector_clear_and_free(struct vector* vec);
@@ -183,7 +183,7 @@ Grows the vector if necessary.
 
 Equivalent to:
 ```
-    vector_insert(vec, vec->size, value);
+vector_insert(vec, vec->size, value);
 ```
 */
 void vector_push(struct vector* vec, void const* restrict value);
@@ -201,12 +201,12 @@ of the vector.
 
 Equivalent to:
 ```
-    T const values[] = { ... };
-    int const n_values = sizeof(values) / sizeof(values[0]);
+T const values[] = { ... };
+int const n_values = sizeof(values) / sizeof(values[0]);
 
-    vector_reserve_more(vec, n_values);
-    for (int i = 0; i < n_values; ++i)
-        vector_push(vec, &values[i]);
+vector_reserve_more(vec, n_values);
+for (int i = 0; i < n_values; ++i)
+    vector_push(vec, &values[i]);
 ```
 */
 void vector_push_array(struct vector* vec, int n_values, void const* restrict values);
