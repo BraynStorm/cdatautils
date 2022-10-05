@@ -229,6 +229,22 @@ vector_push_vsprintf(struct vector* vec, char const* restrict format, va_list ar
         switch (c) {
             case '%': vector_push(vec, &c); break;
             case 's': vector_push_string(vec, va_arg(args, char const*)); break;
+            case '*':
+                c = format[++i];
+                switch (c) {
+                    case 'c': {
+                        unsigned reps = va_arg(args, unsigned);
+                        c = va_arg(args, int);
+                        vector_reserve_more(vec, reps);
+                        memset(vector_ref_char(vec, vec->size), c, reps);
+                        vec->size += reps;
+                    } break;
+                }
+                break;
+            case 'c':
+                c = va_arg(args, int);
+                vector_push(vec, &c);
+                break;
             case 'l':
                 c = format[++i];
                 switch (c) {
@@ -299,7 +315,7 @@ vector_push_sprintf_terminated(struct vector* vec, char const* restrict format, 
         Figure out if it is by checking the last character of the vector before
         inserting anything.
     */
-    if (vec->size > 0 && ((char*)vec->data)[vec->size - 1] != 0) {
+    if (vec->size > 0 && ((char*)vec->data)[vec->size - 1] == 0) {
         // We need to overwrite the last \0.
         --vec->size;
     }

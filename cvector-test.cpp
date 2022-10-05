@@ -388,10 +388,55 @@ TEST_CASE("a vector grows to exact capacity when reserved")
         }
     }
 }
+#define vector_to_string(v) ::std::string((char const*)v.data, v.size)
 
+TEST_CASE("vector_push_sprintf_terminated")
+{
+    struct vector_wrapper v = vector_create(char);
+    vector_reserve(&v, 128);
+
+    auto* vec = &v;
+
+    GIVEN("empty vector")
+    {
+        WHEN("we push a string with sprintf_terminated")
+        {
+            vector_push_sprintf_terminated(vec, "abc");
+            REQUIRE(vector_to_string(v) == std::string("abc\0", 4));
+        }
+    }
+
+    GIVEN("non-empty")
+    {
+        char c = 'a';
+        vector_push(vec, &c);
+        REQUIRE(vector_to_string(v) == "a");
+
+        WHEN("we push a string with sprintf_terminated")
+        {
+            vector_push_sprintf_terminated(vec, "abc");
+            REQUIRE(vector_to_string(v) == std::string("aabc\0", 5));
+        }
+    }
+
+    GIVEN("non-empty null terminated vector")
+    {
+        char c = 'a';
+        vector_push(vec, &c);
+        c = 0;
+        vector_push(vec, &c);
+
+        REQUIRE(vector_to_string(v) == std::string("a\0", 2));
+
+        WHEN("we push a string with sprintf_terminated")
+        {
+            vector_push_sprintf_terminated(vec, "abc");
+            REQUIRE(vector_to_string(v) == std::string("aabc\0", 5));
+        }
+    }
+}
 TEST_CASE("vector_push_sprintf")
 {
-#define vector_to_string(v) ::std::string((char const*)v.data, v.size)
 
     struct vector_wrapper v = {};
     vector_init(&v, sizeof(char));
@@ -416,6 +461,31 @@ TEST_CASE("vector_push_sprintf")
             {
                 REQUIRE(vector_to_string(v) == "abc%");
             }
+        }
+        WHEN("fmt=%c")
+        {
+            vector_push_sprintf(&v, "ab%cc", 'A');
+            REQUIRE(vector_to_string(v) == "abAc");
+        }
+        WHEN("fmt=%c%c")
+        {
+            vector_push_sprintf(&v, "ab%ca%cc", 'A', 'B');
+            REQUIRE(vector_to_string(v) == "abAaBc");
+        }
+        WHEN("fmt=%*c, with 0")
+        {
+            vector_push_sprintf(&v, "ab%*cc", 0, 'A');
+            REQUIRE(vector_to_string(v) == "abc");
+        }
+        WHEN("fmt=%*c, with 1")
+        {
+            vector_push_sprintf(&v, "ab%*cc", 1, 'A');
+            REQUIRE(vector_to_string(v) == "abAc");
+        }
+        WHEN("fmt=%*c, with 10")
+        {
+            vector_push_sprintf(&v, "ab%*cc", 10, 'A');
+            REQUIRE(vector_to_string(v) == "abAAAAAAAAAAc");
         }
         WHEN("fmt=%s")
         {
