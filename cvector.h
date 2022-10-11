@@ -419,7 +419,7 @@ GENERATE_VECTOR_GETTERS(char*, string)
 GENERATE_VECTOR_GETTERS(void*, voidptr)
 GENERATE_VECTOR_GETTERS(int*, intptr)
 
-GENERATE_VECTOR_REF_GETTER(struct vector, vector);
+GENERATE_VECTOR_REF_GETTER(struct vector, vector)
 
 #ifdef __cplusplus
 #undef restrict
