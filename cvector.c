@@ -338,6 +338,7 @@ vector_reserve(struct vector* vec, int at_least)
 void
 vector_reserve_more(struct vector* vec, int more)
 {
+    assert(more >= 0);
     more += vec->size;
     vector_reserve(vec, more);
 }
@@ -345,4 +346,34 @@ void*
 vector_get(struct vector* vec, int index)
 {
     return (char*)vec->data + (vec->value_size * index);
+}
+void
+vector_remove(struct vector* vec, int index)
+{
+    vector_remove_range(vec, index, index + 1);
+}
+void
+vector_remove_range(struct vector* vec, int first, int last)
+{
+    int const value_size = vec->value_size;
+    int const size = vec->size;
+    char* data = (char*)vec->data;
+
+    int const n_removed = last - first;
+    int const n_moved = size - last;
+
+    assert(size > n_removed);
+    assert(first >= 0);
+    assert(first <= size);
+    assert(last >= 0);
+    assert(last <= size);
+    assert(first <= last);
+
+    if (n_moved > 0)
+        memmove(
+            data + first * value_size,
+            data + last * value_size,
+            value_size * n_moved
+        );
+    vec->size = size - n_removed;
 }

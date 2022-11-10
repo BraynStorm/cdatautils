@@ -421,6 +421,18 @@ GENERATE_VECTOR_GETTERS(int*, intptr)
 
 GENERATE_VECTOR_REF_GETTER(struct vector, vector)
 
+/* Remove a single element from the vector.
+
+Equivalent to:
+```
+vector_remove_range(vec, index, index + 1);
+```
+*/
+void vector_remove(struct vector*, int index);
+
+/* Remove all items int the half-open range [first, last) from the vector. */
+void vector_remove_range(struct vector*, int first, int last);
+
 #ifdef __cplusplus
 #undef restrict
 }
