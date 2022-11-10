@@ -6,6 +6,7 @@ option(CVECTOR_FORCE_STATIC "Force <cvector> to be built as a static library")
 option(CVECTOR_TESTS "Build cvector-test" ON)
 option(CVECTOR_ASSERTS "Build cvector with asserts (debug only)" ON)
 option(CVECTOR_DOWNLOAD_DEPS "Allow <cvector> to be download additional dependencies" ON)
+option(CVECTOR_EXAMPLES "Build cvector examples" OFF)
 
 set(CVECTOR_SOURCES cvector.c)
 set(CVECTOR_HEADERS cvector.h)
@@ -71,6 +72,10 @@ if(CVECTOR_TESTS)
     else()
         message("[cvector - INFO] Catch2 was not found. The cvector-test target will not be created.")
     endif()
+endif()
+
+if(CVECTOR_EXAMPLES)
+    add_subdirectory(example/cmake-project)
 endif()
 
 install(
