@@ -29,11 +29,11 @@ ring_buffer_init(
     rb_size_t value_size
 )
 {
+    struct ring_buffer* _rb = malloc(sizeof(*_rb));
+
+    assert(_rb);
     assert(capacity > 1);
     assert(((capacity - 1) & capacity) == 0); // power of two
-
-    struct ring_buffer* _rb = malloc(sizeof(*_rb));
-    assert(_rb);
 
     _rb->data = calloc(capacity, value_size);
     assert(_rb->data);
@@ -60,7 +60,7 @@ ring_buffer_maybe_push(struct ring_buffer* restrict rb, void const* restrict ite
     rb_size_t const cap = rb->capacity;
     rb_size_t const value_size = rb->value_size;
     rb_size_t const cap_mask = cap - 1u;
-    void* const data = rb->data;
+    char* const data = rb->data;
 
     rb_size_t wa = atomic_load(&rb->write_ahead);
 
@@ -94,7 +94,7 @@ ring_buffer_push(struct ring_buffer* restrict rb, void const* restrict item)
     rb_size_t const cap = rb->capacity;
     rb_size_t const value_size = rb->value_size;
     rb_size_t const cap_mask = cap - 1u;
-    void* const data = rb->data;
+    char* const data = rb->data;
 
     /* Acquire a WRITE-AHEAD slot */
     rb_size_t const wa = atomic_fetch_add_explicit(
@@ -122,7 +122,7 @@ ring_buffer_pop(struct ring_buffer* restrict rb, void* restrict out_item)
     rb_size_t const cap = rb->capacity;
     rb_size_t const value_size = rb->value_size;
     rb_size_t const cap_mask = cap - 1u;
-    void const* const data = rb->data;
+    char const* const data = rb->data;
 
     /* Acquire a READ-AHEAD slot. */
     rb_size_t const ra = atomic_fetch_add_explicit(
@@ -148,7 +148,7 @@ ring_buffer_maybe_pop(struct ring_buffer* restrict rb, void* restrict out_item)
 {
     rb_size_t const value_size = rb->value_size;
     rb_size_t const cap_mask = rb->capacity - 1u;
-    void const* const data = rb->data;
+    char const* const data = rb->data;
 
     rb_size_t ra = atomic_load(&rb->read_ahead);
 

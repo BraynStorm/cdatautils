@@ -8,6 +8,14 @@ add_library(cdatautils::vector ALIAS vector)
 
 if(MSVC)
     target_link_options(vector PRIVATE "/NATVIS:cdatautils-vector.natvis")
+
+    if(${CMAKE_PROJECT_NAME} STREQUAL "cdatautils")
+        target_compile_options(vector PRIVATE /Wall /WX)
+    endif()
+else()
+    if(${CMAKE_PROJECT_NAME} STREQUAL "cdatautils")
+        target_compile_options(vector PRIVATE -Weverything -Werror)
+    endif()
 endif()
 
 target_include_directories(vector PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)

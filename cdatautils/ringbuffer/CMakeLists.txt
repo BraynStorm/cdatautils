@@ -6,6 +6,16 @@ add_library(ringbuffer STATIC src/ringbuffer.c)
 
 add_library(cdatautils::ringbuffer ALIAS ringbuffer)
 
+if(MSVC)
+    if(${CMAKE_PROJECT_NAME} STREQUAL "cdatautils")
+        target_compile_options(ringbuffer PRIVATE /Wall /WX)
+    endif()
+else()
+    if(${CMAKE_PROJECT_NAME} STREQUAL "cdatautils")
+        target_compile_options(ringbuffer PRIVATE -Weverything -Werror)
+    endif()
+endif()
+
 target_include_directories(ringbuffer PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_sources(
     ringbuffer
@@ -31,6 +41,7 @@ endif()
 set_target_properties(
     ringbuffer
     PROPERTIES
+    COMPILE_WARNING_AS_ERROR ON
     C_STANDARD 23
     C_STANDARD_REQUIRED 11
     C_EXTENSIONS OFF

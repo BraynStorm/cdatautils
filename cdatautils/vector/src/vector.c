@@ -19,7 +19,8 @@ bool
 vector_realloc(void** data_block, int element_size, int old_elements, int new_elements)
 {
     void* old_block = *data_block;
-    void* new_block = realloc(old_block, new_elements * element_size);
+    size_t new_size = (size_t)new_elements * (size_t)element_size;
+    void* new_block = realloc(old_block, new_size);
     if (!new_block) {
 #ifdef CDATAUTILS_VECTOR_LOG_ALLOCS
         fprintf(
@@ -31,7 +32,7 @@ vector_realloc(void** data_block, int element_size, int old_elements, int new_el
             element_count
         );
 #endif
-        new_block = malloc(new_elements * element_size);
+        new_block = malloc(new_size);
         if (!new_block) {
 #ifdef CDATAUTILS_VECTOR_LOG_ALLOCS
             fprintf(
@@ -44,7 +45,7 @@ vector_realloc(void** data_block, int element_size, int old_elements, int new_el
 #endif
             return false;
         } else {
-            memcpy(new_block, old_block, old_elements * element_size);
+            memcpy(new_block, old_block, new_size);
             free(old_block);
         }
     }
@@ -58,6 +59,8 @@ vector_realloc(void** data_block, int element_size, int old_elements, int new_el
         new_elements,
         new_block
     );
+#else
+    (void)old_elements;
 #endif
 
     *data_block = new_block;
@@ -126,6 +129,7 @@ vector_insert(struct vector* vec, int index, void const* restrict value)
 {
     int const size = vec->size;
     int const value_size = vec->value_size;
+    int move_amount = size - index;
 
     assert(index >= 0);
     assert(index <= size);
@@ -133,16 +137,15 @@ vector_insert(struct vector* vec, int index, void const* restrict value)
     if (size + 1 > vec->capacity)
         vector_grow(vec, 1, false);
 
-    int move_amount = size - index;
     if (move_amount > 0) {
         memmove(
             vector_get(vec, index + 1),
             vector_get(vec, index),
-            move_amount * value_size
+            (size_t)move_amount * (size_t)value_size
         );
     }
 
-    memcpy(vector_get(vec, index), value, value_size);
+    memcpy(vector_get(vec, index), value, (size_t)value_size);
     vec->size = size + 1;
 }
 void
@@ -155,13 +158,12 @@ vector_insert_array(
 {
     int const size = vec->size;
     int const value_size = vec->value_size;
+    int move_amount = size - index;
 
     assert(index <= size);
 
     // `vector_reserve_more(n_values)` but 'faster' (less going to memory).
     vector_reserve(vec, size + n_values);
-
-    int move_amount = size - index;
 
     // Move the items already in the vector. {#000}
     /* NOTE(braynstorm):
@@ -171,11 +173,11 @@ vector_insert_array(
         memmove(
             vector_get(vec, index + n_values),
             vector_get(vec, index),
-            move_amount * value_size
+            (size_t)move_amount * (size_t)value_size
         );
 
     // Copy the whole vector in the newly cleared up space.
-    memcpy(vector_get(vec, index), values, n_values * value_size);
+    memcpy(vector_get(vec, index), values, (size_t)n_values * (size_t)value_size);
 
     // Finish the insertion by increasing the size.
     vec->size = size + n_values;
@@ -193,7 +195,7 @@ vector_push_array(struct vector* vec, int n_values, void const* restrict values)
 void
 vector_push_string(struct vector* vec, char const* restrict str)
 {
-    vector_push_array(vec, strlen(str), str);
+    vector_push_array(vec, (int)strlen(str), str);
 }
 void
 vector_push_sprintf(struct vector* vec, char const* restrict format, ...)
@@ -206,15 +208,15 @@ vector_push_sprintf(struct vector* vec, char const* restrict format, ...)
 void
 vector_push_vsprintf(struct vector* vec, char const* restrict format, va_list args)
 {
-    assert(vec->value_size == sizeof(char));
-
     int i = 0;
     int written = 0;
-    char* tmp = 0;
     int last_replacement = 0;
+
+    assert(vec->value_size == sizeof(char));
 
     for (; format[i]; ++i) {
         char c = format[i];
+        int size;
         if (c != '%')
             continue;
 
@@ -224,7 +226,7 @@ vector_push_vsprintf(struct vector* vec, char const* restrict format, va_list ar
         // Get the next char.
         c = format[++i];
 
-        int size = vec->size;
+        size = vec->size;
 
         switch (c) {
             case '%': vector_push(vec, &c); break;
@@ -233,16 +235,16 @@ vector_push_vsprintf(struct vector* vec, char const* restrict format, va_list ar
                 c = format[++i];
                 switch (c) {
                     case 'c': {
-                        unsigned reps = va_arg(args, unsigned);
-                        c = va_arg(args, int);
+                        int reps = va_arg(args, int);
+                        c = (char)va_arg(args, int);
                         vector_reserve_more(vec, reps);
-                        memset(vector_ref_char(vec, vec->size), c, reps);
+                        memset(vector_ref_char(vec, vec->size), c, (size_t)reps);
                         vec->size += reps;
                     } break;
                 }
                 break;
             case 'c':
-                c = va_arg(args, int);
+                c = (char)va_arg(args, int);
                 vector_push(vec, &c);
                 break;
             case 'l':
@@ -310,6 +312,9 @@ vector_push_vsprintf(struct vector* vec, char const* restrict format, va_list ar
 void
 vector_push_sprintf_terminated(struct vector* vec, char const* restrict format, ...)
 {
+    va_list va;
+    char null = 0;
+
     /* NOTE(bozho2):
         `vector_push_sprintf_terminated` could be chained.
         Figure out if it is by checking the last character of the vector before
@@ -320,12 +325,10 @@ vector_push_sprintf_terminated(struct vector* vec, char const* restrict format, 
         --vec->size;
     }
 
-    va_list va;
     va_start(va, format);
     vector_push_vsprintf(vec, format, va);
     va_end(va);
 
-    char null = 0;
     vector_push(vec, &null);
 }
 void
@@ -373,7 +376,7 @@ vector_remove_range(struct vector* vec, int first, int last)
         memmove(
             data + first * value_size,
             data + last * value_size,
-            value_size * n_moved
+            (size_t)value_size * (size_t)n_moved
         );
     vec->size = size - n_removed;
 }
