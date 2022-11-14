@@ -1,11 +1,13 @@
-# cvector - a simple vector implementation in C.
+# cdatautils - collection of C data structures.
+
+cdatautils/vector.h - a simple vector implementation in C.
 
 TODO: extend this document
 
 
 # Example usage:
 ```c
-#include <cvector.h>
+#include <cdatautils/cvector.h>
 
 int
 main()

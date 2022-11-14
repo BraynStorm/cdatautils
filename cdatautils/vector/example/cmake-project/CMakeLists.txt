@@ -3,10 +3,7 @@ cmake_minimum_required(VERSION 3.24)
 project(example C)
 
 # Don't download it if we're build cvector right now.
-if(NOT ${CMAKE_PROJECT_NAME} STREQUAL "cvector")
-    # No need to build tests when just using the library.
-    set(CVECTOR_TESTS OFF)
-
+if(NOT ${CMAKE_PROJECT_NAME} STREQUAL "cdatautils")
     # Fetch the library from GitHub.
     FetchContent_Declare(
         cvector
@@ -18,11 +15,11 @@ if(NOT ${CMAKE_PROJECT_NAME} STREQUAL "cvector")
     )
 
     # Use it.
-    find_package(cvector)
+    find_package(cdatautils)
 endif()
 
-add_executable(example_basic example_basic.c)
-add_executable(example_custom_types example_custom_types.c)
+add_executable(cdatautils-example-basic example_basic.c)
+add_executable(cdatautils-example-custom_types example_custom_types.c)
 
-target_link_libraries(example_basic cvector)
-target_link_libraries(example_custom_types cvector)
+target_link_libraries(cdatautils-example-basic cdatautils::vector)
+target_link_libraries(cdatautils-example-custom_types cdatautils::vector)

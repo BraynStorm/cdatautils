@@ -1,4 +1,4 @@
-#include <cvector.h>
+#include <cdatautils/vector.h>
 
 #include <stdio.h>
 
@@ -7,7 +7,7 @@ struct vec3f
     float x, y, z;
 };
 
-GENERATE_VECTOR_GETTERS(struct vec3f, vec3f);
+CDATAUTILS_VECTOR_GETTERS(struct vec3f, vec3f);
 
 int
 main()

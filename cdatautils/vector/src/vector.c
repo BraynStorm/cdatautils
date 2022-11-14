@@ -1,4 +1,4 @@
-#include "cvector.h"
+#include <cdatautils/vector.h>
 
 #include <stdarg.h>
 #include <stdbool.h>
@@ -8,10 +8,10 @@
 
 #define internal static
 
-#ifdef VECTOR_USE_ASSERT
+#ifdef CDATAUTILS_VECTOR_USE_ASSERT
 #include <assert.h>
 #else
-#define assert(...)
+#define assert(...) (void)(__VA_ARGS__)
 #endif
 
 internal
@@ -21,7 +21,7 @@ vector_realloc(void** data_block, int element_size, int old_elements, int new_el
     void* old_block = *data_block;
     void* new_block = realloc(old_block, new_elements * element_size);
     if (!new_block) {
-#ifdef VECTOR_LOG_ALLOCS
+#ifdef CDATAUTILS_VECTOR_LOG_ALLOCS
         fprintf(
             stderr,
             "[vector.c] Failed to realloc: "
@@ -33,7 +33,7 @@ vector_realloc(void** data_block, int element_size, int old_elements, int new_el
 #endif
         new_block = malloc(new_elements * element_size);
         if (!new_block) {
-#ifdef VECTOR_LOG_ALLOCS
+#ifdef CDATAUTILS_VECTOR_LOG_ALLOCS
             fprintf(
                 stderr,
                 "[vector.c] Failed to calloc: "
@@ -48,7 +48,7 @@ vector_realloc(void** data_block, int element_size, int old_elements, int new_el
             free(old_block);
         }
     }
-#ifdef VECTOR_LOG_ALLOCS
+#ifdef CDATAUTILS_VECTOR_LOG_ALLOCS
     printf(
         "[vector.c] realloc: "
         "old_block=%p old_n_capacity=%d "

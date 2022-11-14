@@ -1,5 +1,5 @@
-#ifndef VECTOR_H
-#define VECTOR_H
+#ifndef CDATAUTILS_VECTOR_H
+#define CDATAUTILS_VECTOR_H
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -224,14 +224,14 @@ vector_push_array(vec, strlen(string), string);
 void vector_push_string(struct vector* vec, char const* restrict string);
 
 #if defined(__clang__) || defined(__GNUC__)
-#define CVECTOR_PRINTF_ATTRIBUTE __attribute__((format(printf, 2, 3)))
-#define CVECTOR_PRINTF_FSTRING
+#define CDATAUTILS_VECTOR_PRINTF_ATTRIBUTE __attribute__((format(printf, 2, 3)))
+#define CDATAUTILS_VECTOR_PRINTF_FSTRING
 #elif defined(MSVC)
-#define CVECTOR_PRINTF_ATTRIBUTE
-#define CVECTOR_PRINTF_FSTRING _Printf_format_string_
+#define CDATAUTILS_VECTOR_PRINTF_ATTRIBUTE
+#define CDATAUTILS_VECTOR_PRINTF_FSTRING _Printf_format_string_
 #else
-#define CVECTOR_PRINTF_ATTRIBUTE
-#define CVECTOR_PRINTF_FSTRING
+#define CDATAUTILS_VECTOR_PRINTF_ATTRIBUTE
+#define CDATAUTILS_VECTOR_PRINTF_FSTRING
 #endif
 
 /* Pushes formatted data to the internal buffer.
@@ -262,9 +262,9 @@ Notes:
 */
 void vector_push_sprintf(
     struct vector* vec,
-    CVECTOR_PRINTF_FSTRING char const* restrict format,
+    CDATAUTILS_VECTOR_PRINTF_FSTRING char const* restrict format,
     ...
-) CVECTOR_PRINTF_ATTRIBUTE;
+) CDATAUTILS_VECTOR_PRINTF_ATTRIBUTE;
 void vector_push_vsprintf(
     struct vector* vec,
     char const* restrict format,
@@ -272,9 +272,9 @@ void vector_push_vsprintf(
 );
 void vector_push_sprintf_terminated(
     struct vector* vec,
-    CVECTOR_PRINTF_FSTRING char const* restrict format,
+    CDATAUTILS_VECTOR_PRINTF_FSTRING char const* restrict format,
     ...
-) CVECTOR_PRINTF_ATTRIBUTE;
+) CDATAUTILS_VECTOR_PRINTF_ATTRIBUTE;
 
 /* Ensures the vector can fit at least `at_least` items.
 
@@ -295,9 +295,9 @@ Equivalent to:
 (char*)vec->data + (vec->value_size * index);
 ```
 
-See also GENERATE_VECTOR_GETTERS.
-See also GENERATE_VECTOR_REF_GETTER.
-See also GENERATE_VECTOR_VALUE_GETTER.
+See also CDATAUTILS_VECTOR_GETTERS.
+See also CDATAUTILS_VECTOR_REF_GETTER.
+See also CDATAUTILS_VECTOR_VALUE_GETTER.
 */
 void* vector_get(struct vector* vec, int index);
 
@@ -367,9 +367,9 @@ vector*, int index)`.
 The definitions are marked as `static inline` so they are kinda hard on the
 linker but do not require LTO to inline.
 
-See the `vector.h` header for examples.
+See the `cdatautils/vector.h` header for examples.
  */
-#define GENERATE_VECTOR_REF_GETTER(type, name)                           \
+#define CDATAUTILS_VECTOR_REF_GETTER(type, name)                         \
     static inline type* vector_ref_##name(struct vector* vec, int index) \
     {                                                                    \
         return (type*)vector_get(vec, index);                            \
@@ -381,9 +381,9 @@ vector*, int index)`.
 The definitions are marked as `static inline` so they are kinda hard on the
 linker but do not require LTO to inline.
 
-See the `vector.h` header for examples.
+See the `cdatautils/vector.h` header for examples.
 */
-#define GENERATE_VECTOR_VALUE_GETTER(type, name)                        \
+#define CDATAUTILS_VECTOR_VALUE_GETTER(type, name)                      \
     static inline type vector_get_##name(struct vector* vec, int index) \
     {                                                                   \
         return *(type*)vector_get(vec, index);                          \
@@ -391,35 +391,35 @@ See the `vector.h` header for examples.
 
 /* Generates two getters for a `struct vector` - a by-value and a by-ref getter.
 
-See the `vector.h` header for examples.
+See the `cdatautils/vector.h` header for examples.
 */
-#define GENERATE_VECTOR_GETTERS(type, name)  \
-    GENERATE_VECTOR_VALUE_GETTER(type, name) \
-    GENERATE_VECTOR_REF_GETTER(type, name)
+#define CDATAUTILS_VECTOR_GETTERS(type, name)  \
+    CDATAUTILS_VECTOR_VALUE_GETTER(type, name) \
+    CDATAUTILS_VECTOR_REF_GETTER(type, name)
 
-GENERATE_VECTOR_GETTERS(long long, longlong)
-GENERATE_VECTOR_GETTERS(long, long)
-GENERATE_VECTOR_GETTERS(int, int)
-GENERATE_VECTOR_GETTERS(short, short)
-GENERATE_VECTOR_GETTERS(char, char)
+CDATAUTILS_VECTOR_GETTERS(long long, longlong)
+CDATAUTILS_VECTOR_GETTERS(long, long)
+CDATAUTILS_VECTOR_GETTERS(int, int)
+CDATAUTILS_VECTOR_GETTERS(short, short)
+CDATAUTILS_VECTOR_GETTERS(char, char)
 
-GENERATE_VECTOR_GETTERS(int64_t, i64)
-GENERATE_VECTOR_GETTERS(int32_t, i32)
-GENERATE_VECTOR_GETTERS(int16_t, i16)
-GENERATE_VECTOR_GETTERS(int8_t, i8)
-GENERATE_VECTOR_GETTERS(uint64_t, u64)
-GENERATE_VECTOR_GETTERS(uint32_t, u32)
-GENERATE_VECTOR_GETTERS(uint16_t, u16)
-GENERATE_VECTOR_GETTERS(uint8_t, u8)
-GENERATE_VECTOR_GETTERS(double, f64)
-GENERATE_VECTOR_GETTERS(float, f32)
+CDATAUTILS_VECTOR_GETTERS(int64_t, i64)
+CDATAUTILS_VECTOR_GETTERS(int32_t, i32)
+CDATAUTILS_VECTOR_GETTERS(int16_t, i16)
+CDATAUTILS_VECTOR_GETTERS(int8_t, i8)
+CDATAUTILS_VECTOR_GETTERS(uint64_t, u64)
+CDATAUTILS_VECTOR_GETTERS(uint32_t, u32)
+CDATAUTILS_VECTOR_GETTERS(uint16_t, u16)
+CDATAUTILS_VECTOR_GETTERS(uint8_t, u8)
+CDATAUTILS_VECTOR_GETTERS(double, f64)
+CDATAUTILS_VECTOR_GETTERS(float, f32)
 
-GENERATE_VECTOR_GETTERS(char*, string)
+CDATAUTILS_VECTOR_GETTERS(char*, string)
 
-GENERATE_VECTOR_GETTERS(void*, voidptr)
-GENERATE_VECTOR_GETTERS(int*, intptr)
+CDATAUTILS_VECTOR_GETTERS(void*, voidptr)
+CDATAUTILS_VECTOR_GETTERS(int*, intptr)
 
-GENERATE_VECTOR_REF_GETTER(struct vector, vector)
+CDATAUTILS_VECTOR_REF_GETTER(struct vector, vector)
 
 /* Remove a single element from the vector.
 
