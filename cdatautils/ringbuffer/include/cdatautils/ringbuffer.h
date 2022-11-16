@@ -2,6 +2,7 @@
 #define CDATAUTILS_RING_BUFFER_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -56,6 +57,22 @@ bool ring_buffer_maybe_pop(struct ring_buffer* restrict, void* restrict out_item
 
 rb_size_t ring_buffer_value_size(struct ring_buffer* restrict);
 rb_size_t ring_buffer_capacity(struct ring_buffer* restrict);
+/* NOTE:
+```
+a
+```
+Clears the buffer, by setting all pointers to 0.
+(READ, READ-AHEAD, WRITE, WRITE-AHEAD).
+
+Data race:
+    Ensure that no consumers or producers are currently working with this buffer.
+*/
+void ring_buffer_clear(struct ring_buffer* restrict);
+/* Returns the difference between WRITE and READ.
+
+This value will always be inaccurate if used with multiple producers/consumers.
+*/
+rb_size_t ring_buffer_size(struct ring_buffer* restrict);
 
 #ifdef __cplusplus
 }

@@ -17,9 +17,9 @@ struct ring_buffer
     rb_size_t value_size;
     rb_size_t capacity;
     alignas(CDATAUTILS_RING_BUFFER_CACHE_LINE_SIZE * 2) _Atomic rb_size_t read;
-    _Atomic rb_size_t read_ahead;
+    alignas(CDATAUTILS_RING_BUFFER_CACHE_LINE_SIZE * 2) _Atomic rb_size_t read_ahead;
     alignas(CDATAUTILS_RING_BUFFER_CACHE_LINE_SIZE * 2) _Atomic rb_size_t write;
-    _Atomic rb_size_t write_ahead;
+    alignas(CDATAUTILS_RING_BUFFER_CACHE_LINE_SIZE * 2) _Atomic rb_size_t write_ahead;
 };
 
 void
@@ -52,7 +52,7 @@ void
 ring_buffer_destroy(struct ring_buffer* restrict rb)
 {
     free(rb->data);
-    memset(rb, 0, sizeof(*rb));
+    rb->data = NULL;
 }
 bool
 ring_buffer_maybe_push(struct ring_buffer* restrict rb, void const* restrict item)
@@ -62,21 +62,27 @@ ring_buffer_maybe_push(struct ring_buffer* restrict rb, void const* restrict ite
     rb_size_t const cap_mask = cap - 1u;
     char* const data = rb->data;
 
-    rb_size_t wa = atomic_load(&rb->write_ahead);
+    rb_size_t wa = atomic_load_explicit(&rb->write_ahead, memory_order_acquire);
 
     /* If the buffer is "full", can't push. */
-    if (wa - atomic_load(&rb->read) >= cap)
+    if (wa - atomic_load_explicit(&rb->read, memory_order_acquire) >= cap)
         return false;
 
     /* If there is someone writing ahead of us, we will have to spin on the
     write to WRITE, so just don't. */
-    if (atomic_load(&rb->write) != wa)
+    if (atomic_load_explicit(&rb->write, memory_order_acquire) != wa)
         return false;
 
     /* If someone stole our WRITE-AHEAD slot, we can't push.
     Otherwise, take the WRITE-AHEAD slot, as it guaranteed that we will not block.
     */
-    if (!atomic_compare_exchange_strong(&rb->write_ahead, &wa, wa + 1))
+    if (!atomic_compare_exchange_strong_explicit(
+            &rb->write_ahead,
+            &wa,
+            wa + 1,
+            memory_order_acquire,
+            memory_order_acquire
+        ))
         return false;
 
     /* Alright, (WRITE == WRITE-AHEAD) && (WRITE-AHEAD - READ < cap).
@@ -84,7 +90,7 @@ ring_buffer_maybe_push(struct ring_buffer* restrict rb, void const* restrict ite
     memcpy(data + (wa & cap_mask) * value_size, item, value_size);
 
     /* "Increment" WRITE. */
-    atomic_store(&rb->write, wa + 1);
+    atomic_store_explicit(&rb->write, wa + 1, memory_order_release);
     return true;
 }
 
@@ -139,7 +145,7 @@ ring_buffer_pop(struct ring_buffer* restrict rb, void* restrict out_item)
     memcpy(out_item, data + (ra & cap_mask) * value_size, value_size);
 
     /* When READ reaches our READ-AHEAD, set READ = READ-AHEAD + 1. */
-    while (atomic_load_explicit(&rb->read, memory_order_relaxed) != ra)
+    while (atomic_load_explicit(&rb->read, memory_order_acquire) != ra)
         ;
     atomic_store_explicit(&rb->read, ra + 1, memory_order_release);
 }
@@ -150,21 +156,27 @@ ring_buffer_maybe_pop(struct ring_buffer* restrict rb, void* restrict out_item)
     rb_size_t const cap_mask = rb->capacity - 1u;
     char const* const data = rb->data;
 
-    rb_size_t ra = atomic_load(&rb->read_ahead);
+    rb_size_t ra = atomic_load_explicit(&rb->read_ahead, memory_order_acquire);
 
     /* If the buffer is "empty", nothing to pop. */
-    if (atomic_load(&rb->write) - ra == 0)
+    if (atomic_load_explicit(&rb->write, memory_order_relaxed) - ra == 0)
         return false;
 
     /* If there is someone reading ahead of us, we will have to spin on the
     write to READ, so just don't. */
-    if (atomic_load(&rb->read) != ra)
+    if (atomic_load_explicit(&rb->read, memory_order_relaxed) != ra)
         return false;
 
     /* If someone managed to steal our READ-AHEAD slot, we can't pop.
     Otherwise, take the READ-AHEAD slot, as it guaranteed that we will not block.
     */
-    if (!atomic_compare_exchange_strong(&rb->read_ahead, &ra, ra + 1))
+    if (!atomic_compare_exchange_strong_explicit(
+            &rb->read_ahead,
+            &ra,
+            ra + 1,
+            memory_order_acquire,
+            memory_order_relaxed
+        ))
         return false;
 
     /* Alright, (READ == READ-AHEAD) && (READ-AHEAD != WRITE).
@@ -173,8 +185,7 @@ ring_buffer_maybe_pop(struct ring_buffer* restrict rb, void* restrict out_item)
     memcpy(out_item, data + (ra & cap_mask) * value_size, value_size);
 
     /* "Increment" READ. */
-    /* release */
-    atomic_store(&rb->read, ra + 1);
+    atomic_store_explicit(&rb->read, ra + 1, memory_order_release);
 
     return true;
 }
@@ -188,4 +199,27 @@ rb_size_t
 ring_buffer_value_size(struct ring_buffer* restrict rb)
 {
     return rb->value_size;
+}
+void
+ring_buffer_clear(struct ring_buffer* restrict rb)
+{
+    rb_size_t w;
+    rb_size_t ra;
+
+    ra = atomic_load_explicit(&rb->read_ahead, memory_order_acquire);
+
+    /* Acquire all READ-AHEAD slots after the current one, until WRITE. */
+    do {
+        w = atomic_load(&rb->write);
+    } while (!atomic_compare_exchange_weak(&rb->read_ahead, &ra, w));
+
+    while (atomic_load_explicit(&rb->read, memory_order_relaxed) != ra)
+        ;
+    atomic_store_explicit(&rb->read, w, memory_order_relaxed);
+}
+rb_size_t
+ring_buffer_size(struct ring_buffer* restrict rb)
+{
+    return atomic_load_explicit(&rb->write, memory_order_relaxed)
+           - atomic_load_explicit(&rb->read, memory_order_relaxed);
 }
