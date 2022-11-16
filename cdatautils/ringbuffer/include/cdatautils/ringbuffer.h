@@ -27,13 +27,16 @@ void ring_buffer_init(
 /* Destroys a ring_buffer immediately. */
 void ring_buffer_destroy(struct ring_buffer* restrict);
 
-/* Blocking insert operation.
-    Writes a single item in the buffer, blocking if the buffer is full.
+/* Writes a single item in the buffer. Blocking insert operation.
+
+Blocking reasons:
+    Waiting for other write operations, from different threads (multi-producer).
+    Waiting for the buffer to have an empty slot.
 */
 void ring_buffer_push(struct ring_buffer* restrict, void const* restrict item);
 /* Tries to push an item in the buffer.
     Returns true if the push was successful.
-    Returns false if the push failed.
+    Returns false if the push failed and the buffer is unchanged.
 
 Failure reasons:
     - The buffer is full.
@@ -55,7 +58,14 @@ Failure reasons:
 */
 bool ring_buffer_maybe_pop(struct ring_buffer* restrict, void* restrict out_item);
 
+/* Returns the size of one item.
+Thread safe.
+*/
 rb_size_t ring_buffer_value_size(struct ring_buffer* restrict);
+
+/* Returns the maximum number of items.
+Thread safe.
+*/
 rb_size_t ring_buffer_capacity(struct ring_buffer* restrict);
 /* NOTE:
 ```
