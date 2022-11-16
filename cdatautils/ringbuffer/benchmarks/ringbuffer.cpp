@@ -205,6 +205,53 @@ bm_ring_buffer_scratch_space(benchmark::State& state)
 // BENCHMARK(bm_ring_buffer_two_loops)->ARGS;
 
 void
+bm_ring_buffer_single_thread(benchmark::State& state)
+{
+    using uint = unsigned int;
+
+    struct ring_buffer* rb;
+    ring_buffer_init(&rb, state.range(0), sizeof(uint));
+
+    uint write_item = 0;
+    for (auto _ : state) {
+        for (int i = 0; i < state.range(1); ++i) {
+            ring_buffer_push(rb, &write_item);
+            ++write_item;
+
+            uint read_item = 0;
+            ring_buffer_pop(rb, &read_item);
+
+            benchmark::DoNotOptimize(read_item);
+        }
+        state.SetBytesProcessed(
+            state.bytes_processed() + state.range(1) * sizeof(uint)
+        );
+    }
+}
+void
+bm_ring_buffer_single_thread_maybe(benchmark::State& state)
+{
+    using uint = unsigned int;
+
+    struct ring_buffer* rb;
+    ring_buffer_init(&rb, state.range(0), sizeof(uint));
+
+    uint write_item = 0;
+    for (auto _ : state) {
+        for (int i = 0; i < state.range(1); ++i) {
+            ring_buffer_maybe_push(rb, &write_item);
+            ++write_item;
+
+            uint read_item = 0;
+            ring_buffer_maybe_pop(rb, &read_item);
+            benchmark::DoNotOptimize(read_item);
+        }
+        state.SetBytesProcessed(
+            state.bytes_processed() + state.range(1) * sizeof(uint)
+        );
+    }
+}
+void
 bm_ring_buffer_multithread(benchmark::State& state)
 {
     static struct ring_buffer* rb;
@@ -241,7 +288,7 @@ bm_ring_buffer_multithread(benchmark::State& state)
     }
 }
 void
-bm_ring_buffer_multithread_maybe_push(benchmark::State& state)
+bm_ring_buffer_multithread_maybe(benchmark::State& state)
 {
     static struct ring_buffer* rb;
     if (state.thread_index() == 0) {
@@ -270,8 +317,27 @@ bm_ring_buffer_multithread_maybe_push(benchmark::State& state)
         ring_buffer_destroy(rb);
     }
 }
-#define ARGS2 ArgsProduct({ { 0x10000 } })
 
-BENCHMARK(bm_ring_buffer_multithread)->Threads(2)->ARGS2->Iterations(100000);
+
+void
+decorate_ring_buffer_single_thread(benchmark::internal::Benchmark* bm)
+{
+    bm->ComputeStatistics(
+          "max",
+          [](std::vector<double> const& v) -> double {
+              return *(std::max_element(std::begin(v), std::end(v)));
+          },
+          benchmark::StatisticUnit::kTime
+    )
+        ->Complexity()
+        ->ArgsProduct({
+            { 64 },
+            { 1, 2, 4, 8, 16, 32, 64 },
+        })
+        ->Iterations(10000000);
+}
+BENCHMARK(bm_ring_buffer_single_thread)->Apply(decorate_ring_buffer_single_thread);
+BENCHMARK(bm_ring_buffer_single_thread_maybe)
+    ->Apply(decorate_ring_buffer_single_thread);
 
 BENCHMARK_MAIN();
