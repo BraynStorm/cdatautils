@@ -4,6 +4,8 @@ project(cdatautils C CXX)
 
 option(CDATAUTILS_DOWNLOAD_DEPS "Allow cdatautils to download additional dependencies" ON)
 
+find_package(Catch2 QUIET)
+
 if(NOT Catch2_FOUND AND CDATAUTILS_DOWNLOAD_DEPS)
     include(FetchContent)
     FetchContent_Declare(

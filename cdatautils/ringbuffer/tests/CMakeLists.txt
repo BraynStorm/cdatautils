@@ -1,5 +1,3 @@
-find_package(Catch2 QUIET)
-
 if(Catch2_FOUND)
     include(CTest)
     include(Catch)
