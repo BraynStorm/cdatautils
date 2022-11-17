@@ -3,6 +3,9 @@
 #include <cdatautils/ringbuffer.h>
 
 #include <string>
+#include <optional>
+#include <atomic>
+#include <thread>
 
 /* Necessary wrappers so that Catch2 correctly calls destructors.
  */
@@ -25,17 +28,33 @@ struct ring_buffer_wrapper
         _rb.reset(rb);
     }
 
-    void
+    bool
     push(T const& item)
     {
-        ring_buffer_push(_rb.get(), &item);
+        return ring_buffer_push(_rb.get(), &item);
     }
 
-    T
+    std::optional<T>
     pop()
     {
         T item;
-        ring_buffer_pop(_rb.get(), &item);
+        if (ring_buffer_pop(_rb.get(), &item))
+            return item;
+        else
+            return {};
+    }
+
+    void
+    push_deadlock(T const& item)
+    {
+        ring_buffer_deadlock_push(_rb.get(), &item);
+    }
+
+    T
+    pop_deadlock()
+    {
+        T item;
+        ring_buffer_deadlock_pop(_rb.get(), &item);
         return item;
     }
 
@@ -131,4 +150,74 @@ TEST_CASE("ring buffer", "[ring_buffer]")
             }
         }
     }
+}
+
+
+TEST_CASE("ring buffer SPSC", "[ring_buffer][threads]")
+{
+    ring_buffer_wrapper<int> rb(16);
+    std::atomic_int counter = 0;
+
+    auto producer = [&rb, &counter]() {
+        for (int i = 0; i < 200'000; ++i) {
+            int c = counter++;
+            rb.push_deadlock(c);
+        }
+    };
+
+    std::thread producer_0(producer);
+
+    int* array = new int[200'000]{ 0 };
+
+    for (int i = 0; i < 200'000; ++i) {
+        int index = rb.pop_deadlock();
+        assert(index >= 0);
+        assert(index < 200'000);
+        ++array[index];
+    }
+    producer_0.join();
+    for (int i = 0; i < 200'000; ++i) {
+        assert(array[i] == 1);
+    }
+
+    delete[] array;
+}
+TEST_CASE("ring buffer MPSC", "[ring_buffer][threads]")
+{
+    ring_buffer_wrapper<int> rb(16);
+    std::atomic_int counter = 0;
+
+    auto producer = [&rb, &counter]() {
+        for (int i = 0; i < 10000; ++i) {
+            int c = counter++;
+            rb.push_deadlock(c);
+        }
+    };
+
+    constexpr int c = 24;
+    std::thread producers[c];
+
+    for (int i = 0; i < c; ++i) {
+        producers[i] = std::thread(producer);
+    }
+    int* array = new int[c * 10'000]{ 0 };
+
+    for (int i = 0; i < c * 10'000; ++i) {
+        int index = rb.pop_deadlock();
+        if (index < 0 || index >= c * 10'000) {
+            REQUIRE(index >= 0);
+            REQUIRE(index < c * 10'000);
+        }
+        ++array[index];
+    }
+    for (int i = 0; i < c * 10'000; ++i) {
+        if (array[i] != 1) {
+            REQUIRE(array[i] == 1);
+        }
+    }
+    for (int i = 0; i < c; ++i) {
+        producers[i].join();
+    }
+
+    delete[] array;
 }
