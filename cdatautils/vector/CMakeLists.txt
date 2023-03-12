@@ -14,7 +14,7 @@ if(MSVC)
     endif()
 else()
     if(${CMAKE_PROJECT_NAME} STREQUAL "cdatautils")
-        target_compile_options(vector PRIVATE -Weverything -Werror)
+        target_compile_options(vector PRIVATE -Weverything -Werror -Wno-unsafe-buffer-usage)
     endif()
 endif()
 
